@@ -1,0 +1,2 @@
+[tool.ruff]
+ignore = ["E501"]  # Black take care off line-too-long
