@@ -24,6 +24,7 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import json
 import logging
+import multiprocessing
 import os
 import random
 
@@ -32,19 +33,7 @@ import torch
 from torch.utils.data import (DataLoader, Dataset, RandomSampler,
                               SequentialSampler)
 from torch.utils.data.distributed import DistributedSampler
-
-try:
-    pass
-except BaseException:
-    pass
-
-import multiprocessing
-
 from tqdm import tqdm
-
-from model import Model
-
-cpu_cont = multiprocessing.cpu_count()
 from transformers import (AdamW, BertConfig, BertForSequenceClassification,
                           BertTokenizer, DistilBertConfig,
                           DistilBertForSequenceClassification,
@@ -54,6 +43,9 @@ from transformers import (AdamW, BertConfig, BertForSequenceClassification,
                           RobertaForSequenceClassification, RobertaTokenizer,
                           get_linear_schedule_with_warmup)
 
+from model import Model
+
+cpu_cont = multiprocessing.cpu_count()
 logger = logging.getLogger(__name__)
 
 MODEL_CLASSES = {
@@ -69,7 +61,7 @@ MODEL_CLASSES = {
 }
 
 
-class InputFeatures(object):
+class InputFeatures:
     """A single training/test features for a example."""
 
     def __init__(
@@ -250,7 +242,7 @@ def train(args, train_dataset, model, tokenizer):
             inputs = batch[0].to(args.device)
             labels = batch[1].to(args.device)
             model.train()
-            loss, logits = model(inputs, labels)
+            loss = model(inputs, labels)[0]
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -296,7 +288,6 @@ def train(args, train_dataset, model, tokenizer):
                     and args.save_steps > 0
                     and global_step % args.save_steps == 0
                 ):
-
                     if (
                         args.local_rank == -1 and args.evaluate_during_training
                     ):  # Only evaluate when single GPU otherwise metrics may not average well
@@ -718,7 +709,7 @@ def main():
         args.local_rank,
         device,
         args.n_gpu,
-        bool(args.local_rank != -1),
+        args.local_rank != -1,
         args.fp16,
     )
 
